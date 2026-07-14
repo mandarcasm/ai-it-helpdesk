@@ -117,6 +117,19 @@
     border-bottom: 1px dashed var(--warn);
   }
   .inline-ticket:hover { color: var(--accent); border-color: var(--accent); }
+  .quick-action {
+    display: block;
+    margin-top: 12px;
+    background: var(--accent);
+    color: #06110c;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: center;
+    padding: 10px 14px;
+    border-radius: 3px;
+  }
+  .quick-action:hover { background: var(--accent-dim); }
   .empty {
     color: var(--muted);
     font-size: 13px;
@@ -124,15 +137,41 @@
     text-align: center;
     line-height: 1.8;
   }
-  .empty code {
-    color: var(--accent);
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .chip {
     background: var(--panel);
-    padding: 2px 6px;
-    border-radius: 3px;
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .chip:hover {
+    border-color: var(--accent-dim);
+    color: var(--accent);
   }
   footer {
     border-top: 1px solid var(--line);
     padding: 14px 20px;
+  }
+  .credit {
+    max-width: 760px;
+    margin: 8px auto 0;
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
   }
   form {
     max-width: 760px;
@@ -180,8 +219,17 @@
 
 <main id="log">
   <div class="empty">
-    Ask a question like it's a real ticket.<br>
-    Try: <code>my VPN keeps disconnecting</code> or <code>outlook won't sync</code>
+    Ask a question like it's a real ticket — or tap an example below.
+    <div class="chips">
+      <button class="chip" type="button">My VPN keeps disconnecting</button>
+      <button class="chip" type="button">I forgot my password</button>
+      <button class="chip" type="button">Printer won't print</button>
+      <button class="chip" type="button">Outlook isn't syncing</button>
+      <button class="chip" type="button">My laptop won't turn on</button>
+      <button class="chip" type="button">New employee starting Monday</button>
+      <button class="chip" type="button">I got a suspicious email</button>
+      <button class="chip" type="button">Wi-Fi keeps dropping</button>
+    </div>
   </div>
 </main>
 
@@ -190,6 +238,7 @@
     <input id="input" type="text" placeholder="Describe the issue…" autocomplete="off" required>
     <button type="submit" id="send-btn">Send</button>
   </form>
+  <div class="credit">Built by MandarK (mandarcasm)</div>
 </footer>
 
 <script>
@@ -214,7 +263,14 @@
   }
   checkHealth();
 
-  function addMessage(role, text, sources, ticketUrl) {
+  document.querySelectorAll('.chip').forEach(btn => {
+    btn.addEventListener('click', () => {
+      input.value = btn.textContent;
+      form.requestSubmit();
+    });
+  });
+
+  function addMessage(role, text, sources, ticketUrl, quickActionUrl, quickActionLabel) {
     const empty = log.querySelector('.empty');
     if (empty) empty.remove();
 
@@ -227,6 +283,15 @@
       src.className = 'sources';
       src.innerHTML = '<b>Source:</b> ' + sources.join(', ');
       div.appendChild(src);
+    }
+    if (quickActionUrl && role.startsWith('bot')) {
+      const action = document.createElement('a');
+      action.href = quickActionUrl;
+      action.target = '_blank';
+      action.rel = 'noopener';
+      action.className = 'quick-action';
+      action.textContent = quickActionLabel || 'Take action';
+      div.appendChild(action);
     }
     if (ticketUrl && role.startsWith('bot')) {
       const ticket = document.createElement('a');
@@ -266,7 +331,7 @@
       if (!res.ok) {
         addMessage('bot error', data.detail || 'Something went wrong.');
       } else {
-        addMessage('bot', data.answer, data.sources, data.ticket_url);
+        addMessage('bot', data.answer, data.sources, data.ticket_url, data.quick_action_url, data.quick_action_label);
       }
     } catch (err) {
       thinking.remove();
