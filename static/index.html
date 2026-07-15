@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Helpdesk AI — L1 Assistant</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0f0d;
+    --panel: #12161d;
+    --line: #232a35;
+    --text: #d9e0e8;
+    --muted: #6b7684;
+    --accent: #4fd1a5;
+    --accent-dim: #2a8f6d;
+    --warn: #e0a458;
+    --danger: #e0685a;
+    --mono: 'SF Mono', 'Roboto Mono', Consolas, monospace;
+    --display: 'Space Grotesk', var(--mono);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(79,209,165,0.06), transparent),
+      radial-gradient(ellipse 700px 400px at 100% 0%, rgba(224,164,88,0.04), transparent),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+  }
+  header {
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    flex-direction: column;
+  }
+  .header-main {
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .home-btn {
+    background: none;
+    border: none;
+    color: var(--text);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 0;
+    font: inherit;
+  }
+  .home-btn:hover .dot { box-shadow: 0 0 12px var(--accent); }
+  .dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    flex-shrink: 0;
+  }
+  header h1 {
+    font-family: var(--display);
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    margin: 0;
+    color: var(--text);
+  }
+  header span {
+    color: var(--muted);
+    font-size: 12px;
+  }
+  .status-strip {
+    padding: 6px 20px;
+    background: var(--panel);
+    border-top: 1px solid var(--line);
+    display: flex;
+    gap: 18px;
+    font-size: 10.5px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+  .status-strip .item { display: flex; align-items: center; gap: 5px; }
+  .status-strip .pulse {
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 4px var(--accent);
+  }
+  .nav-link {
+    margin-left: auto;
+    color: var(--muted);
+    text-decoration: none;
+    font-size: 11px;
+    white-space: nowrap;
+  }
+  .nav-link:hover { color: var(--accent); }
+  .confidence {
+    display: inline-block;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-bottom: 8px;
+  }
+  .confidence.high { background: rgba(79,209,165,0.15); color: var(--accent); }
+  .confidence.medium { background: rgba(224,164,88,0.15); color: var(--warn); }
+  .confidence.low { background: rgba(224,104,90,0.15); color: var(--danger); }
+  .msg-text :first-child { margin-top: 0; }
+  .msg-text :last-child { margin-bottom: 0; }
+  .msg-text ol, .msg-text ul { padding-left: 20px; margin: 8px 0; }
+  .msg-text code {
+    background: #1a2028;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 12px;
+  }
+  .ticket-btn {
+    background: transparent;
+    border: 1px solid var(--warn);
+    color: var(--warn);
+    text-decoration: none;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+    padding: 6px 12px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+  .ticket-btn:hover {
+    background: var(--warn);
+    color: #1a1206;
+  }
+  main {
+    flex: 1;
+    max-width: 760px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    overflow-y: auto;
+  }
+  .msg {
+    max-width: 88%;
+    padding: 12px 14px;
+    border-radius: 3px;
+    line-height: 1.55;
+  }
+  .msg.user, .msg.bot.error, .msg.bot.typing {
+    white-space: pre-wrap;
+  }
+  .msg.user {
+    align-self: flex-end;
+    background: #1a2028;
+    border: 1px solid var(--line);
+  }
+  .msg.bot {
+    align-self: flex-start;
+    background: var(--panel);
+    border-left: 2px solid var(--accent);
+  }
+  .msg.bot.error {
+    border-left-color: var(--warn);
+  }
+  .sources {
+    margin-top: 10px;
+    padding-top: 8px;
+    border-top: 1px dashed var(--line);
+    font-size: 11px;
+    color: var(--muted);
+    letter-spacing: 0.02em;
+  }
+  .sources b { color: var(--accent-dim); }
+  .inline-ticket {
+    display: inline-block;
+    margin-top: 10px;
+    font-size: 11px;
+    color: var(--warn);
+    text-decoration: none;
+    border-bottom: 1px dashed var(--warn);
+  }
+  .inline-ticket:hover { color: var(--accent); border-color: var(--accent); }
+  .quick-action {
+    display: block;
+    margin-top: 12px;
+    background: var(--accent);
+    color: #06110c;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: center;
+    padding: 10px 14px;
+    border-radius: 3px;
+  }
+  .quick-action:hover { background: var(--accent-dim); }
+  .copy-btn {
+    display: block;
+    margin-top: 10px;
+    background: none;
+    border: 1px solid var(--line);
+    color: var(--muted);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    padding: 4px 10px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  .copy-btn:hover { border-color: var(--accent-dim); color: var(--accent); }
+  .empty {
+    color: var(--muted);
+    font-size: 13px;
+    padding: 40px 0;
+    text-align: center;
+    line-height: 1.8;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 20px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .chip {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 14px;
+    border-radius: 20px;
+    cursor: pointer;
+  }
+  .chip:hover {
+    border-color: var(--accent-dim);
+    color: var(--accent);
+  }
+  footer {
+    border-top: 1px solid var(--line);
+    padding: 14px 20px;
+  }
+  .credit {
+    max-width: 760px;
+    margin: 8px auto 0;
+    text-align: center;
+    font-size: 10px;
+    color: var(--muted);
+    letter-spacing: 0.03em;
+  }
+  form {
+    max-width: 760px;
+    margin: 0 auto;
+    display: flex;
+    gap: 10px;
+  }
+  input {
+    flex: 1;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 12px 14px;
+    border-radius: 3px;
+    outline: none;
+  }
+  input:focus { border-color: var(--accent-dim); }
+  button {
+    background: var(--accent);
+    color: #06110c;
+    border: none;
+    font-family: var(--mono);
+    font-weight: 700;
+    font-size: 12px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    padding: 0 20px;
+    border-radius: 3px;
+    cursor: pointer;
+  }
+  button:disabled { background: var(--muted); cursor: not-allowed; }
+  .typing { color: var(--muted); font-style: italic; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-main">
+    <button class="home-btn" id="home-btn" type="button" title="Back to start">
+      <div class="dot"></div>
+      <h1>Helpdesk AI</h1>
+    </button>
+    <a href="/architecture" class="nav-link">Architecture ↗</a>
+    <a id="ticket-link" class="ticket-btn" href="#" target="_blank" rel="noopener">🎫 Raise a Ticket</a>
+  </div>
+  <div class="status-strip">
+    <span class="item"><span class="pulse"></span><span id="status">connecting…</span></span>
+    <span class="item" id="status-kb"></span>
+    <span class="item">Model: Llama 3.1 (Groq)</span>
+  </div>
+</header>
+
+<main id="log">
+  <div class="empty">
+    Ask a question like it's a real ticket — or tap an example below.
+    <div class="chips">
+      <button class="chip" type="button">My VPN keeps disconnecting</button>
+      <button class="chip" type="button">I forgot my password</button>
+      <button class="chip" type="button">Printer won't print</button>
+      <button class="chip" type="button">Outlook isn't syncing</button>
+      <button class="chip" type="button">My laptop won't turn on</button>
+      <button class="chip" type="button">New employee starting Monday</button>
+      <button class="chip" type="button">I got a suspicious email</button>
+      <button class="chip" type="button">Wi-Fi keeps dropping</button>
+    </div>
+  </div>
+</main>
+
+<footer>
+  <form id="chat-form">
+    <input id="input" type="text" placeholder="Describe the issue… (Ctrl+K to focus)" autocomplete="off" required>
+    <button type="submit" id="send-btn">Send</button>
+  </form>
+  <div class="credit">Built by MandarK (mandarcasm) · FastAPI + ChromaDB + Groq (Llama 3.1) · <a href="/architecture" style="color:inherit">architecture ↗</a></div>
+</footer>
+
+<script>
+  const API_BASE = ''; // same-origin; change to your deployed backend URL if hosted separately
+  const log = document.getElementById('log');
+  const form = document.getElementById('chat-form');
+  const input = document.getElementById('input');
+  const sendBtn = document.getElementById('send-btn');
+  const statusEl = document.getElementById('status');
+  const statusKbEl = document.getElementById('status-kb');
+
+  async function checkHealth() {
+    try {
+      const res = await fetch(`${API_BASE}/health`);
+      const data = await res.json();
+      statusEl.textContent = data.collection_ready ? 'System online' : 'KB not ingested — run ingest.py';
+      if (statusKbEl && data.kb_article_count) {
+        statusKbEl.textContent = `${data.kb_article_count} SOPs indexed`;
+      }
+      if (data.ticket_url) {
+        document.getElementById('ticket-link').href = data.ticket_url;
+      }
+    } catch {
+      statusEl.textContent = 'Backend unreachable';
+    }
+  }
+  checkHealth();
+
+  document.getElementById('home-btn').addEventListener('click', () => {
+    log.innerHTML = `<div class="empty">
+      Ask a question like it's a real ticket — or tap an example below.
+      <div class="chips">
+        <button class="chip" type="button">My VPN keeps disconnecting</button>
+        <button class="chip" type="button">I forgot my password</button>
+        <button class="chip" type="button">Printer won't print</button>
+        <button class="chip" type="button">Outlook isn't syncing</button>
+        <button class="chip" type="button">My laptop won't turn on</button>
+        <button class="chip" type="button">New employee starting Monday</button>
+        <button class="chip" type="button">I got a suspicious email</button>
+        <button class="chip" type="button">Wi-Fi keeps dropping</button>
+      </div>
+    </div>`;
+    attachChipHandlers();
+    input.value = '';
+    input.focus();
+  });
+
+  function attachChipHandlers() {
+    document.querySelectorAll('.chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        input.value = btn.textContent;
+        form.requestSubmit();
+      });
+    });
+  }
+  attachChipHandlers();
+
+  document.addEventListener('keydown', (e) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      e.preventDefault();
+      input.focus();
+    }
+  });
+
+  function addMessage(role, text, sources, ticketUrl, quickActionUrl, quickActionLabel) {
+    const empty = log.querySelector('.empty');
+    if (empty) empty.remove();
+
+    const div = document.createElement('div');
+    div.className = `msg ${role}`;
+    div.textContent = text;
+
+    if (sources && sources.length) {
+      const src = document.createElement('div');
+      src.className = 'sources';
+      src.innerHTML = '<b>Source:</b> ' + sources.join(', ');
+      div.appendChild(src);
+    }
+    if (quickActionUrl && role.startsWith('bot')) {
+      const action = document.createElement('a');
+      action.href = quickActionUrl;
+      action.target = '_blank';
+      action.rel = 'noopener';
+      action.className = 'quick-action';
+      action.textContent = quickActionLabel || 'Take action';
+      div.appendChild(action);
+    }
+    if (ticketUrl && role.startsWith('bot')) {
+      const ticket = document.createElement('a');
+      ticket.href = ticketUrl;
+      ticket.target = '_blank';
+      ticket.rel = 'noopener';
+      ticket.className = 'inline-ticket';
+      ticket.textContent = '🎫 Still stuck? Raise a ticket';
+      div.appendChild(ticket);
+    }
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  // Creates an empty bot message shell that gets filled in as the
+  // streamed response arrives — confidence badge first (from the meta
+  // event), then answer text growing chunk by chunk, then sources/actions
+  // once the stream finishes.
+  function createStreamingMessage() {
+    const empty = log.querySelector('.empty');
+    if (empty) empty.remove();
+
+    const div = document.createElement('div');
+    div.className = 'msg bot typing';
+    div.textContent = 'searching KB…';
+    log.appendChild(div);
+    log.scrollTop = log.scrollHeight;
+    return div;
+  }
+
+  function renderMeta(div, meta) {
+    div.classList.remove('typing');
+    div.textContent = '';
+
+    const badge = document.createElement('div');
+    badge.className = `confidence ${meta.confidence}`;
+    const labels = { high: '● High confidence match', medium: '● Medium confidence match', low: '● Low confidence — verify with IT' };
+    badge.textContent = labels[meta.confidence] || meta.confidence;
+    div.appendChild(badge);
+
+    const textEl = document.createElement('div');
+    textEl.className = 'msg-text';
+    div.appendChild(textEl);
+
+    div._textEl = textEl;
+    div._meta = meta;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function renderAnswerText(div, fullText) {
+    if (!div._textEl) return; // meta hasn't arrived yet, shouldn't normally happen
+    div._rawText = fullText;
+    div._textEl.innerHTML = marked.parse(fullText);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function finalizeMessage(div) {
+    const meta = div._meta;
+    if (!meta) return;
+    if (meta.sources && meta.sources.length) {
+      const src = document.createElement('div');
+      src.className = 'sources';
+      src.innerHTML = '<b>Source:</b> ' + meta.sources.join(', ');
+      div.appendChild(src);
+    }
+    if (meta.quick_action_url) {
+      const action = document.createElement('a');
+      action.href = meta.quick_action_url;
+      action.target = '_blank';
+      action.rel = 'noopener';
+      action.className = 'quick-action';
+      action.textContent = meta.quick_action_label || 'Take action';
+      div.appendChild(action);
+    }
+    const copyBtn = document.createElement('button');
+    copyBtn.type = 'button';
+    copyBtn.className = 'copy-btn';
+    copyBtn.textContent = '⧉ Copy';
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(div._rawText || '').then(() => {
+        copyBtn.textContent = '✓ Copied';
+        setTimeout(() => { copyBtn.textContent = '⧉ Copy'; }, 1500);
+      });
+    });
+    div.appendChild(copyBtn);
+    if (meta.ticket_url) {
+      const ticket = document.createElement('a');
+      ticket.href = meta.ticket_url;
+      ticket.target = '_blank';
+      ticket.rel = 'noopener';
+      ticket.className = 'inline-ticket';
+      ticket.textContent = '🎫 Still stuck? Raise a ticket';
+      div.appendChild(ticket);
+    }
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function finalizeError(div, message) {
+    div.classList.remove('typing');
+    div.classList.add('error');
+    div.textContent = message;
+    log.scrollTop = log.scrollHeight;
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const question = input.value.trim();
+    if (!question) return;
+
+    addMessage('user', question);
+    input.value = '';
+    sendBtn.disabled = true;
+
+    const botDiv = createStreamingMessage();
+
+    try {
+      const res = await fetch(`${API_BASE}/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question })
+      });
+
+      if (!res.ok) {
+        let detail = 'Something went wrong.';
+        try { const errData = await res.json(); detail = errData.detail || detail; } catch {}
+        finalizeError(botDiv, detail);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let answerText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const records = buffer.split('\n\n');
+        buffer = records.pop(); // last piece may be incomplete, keep for next read
+
+        for (const record of records) {
+          if (!record.startsWith('data: ')) continue;
+          let payload;
+          try { payload = JSON.parse(record.slice(6)); } catch { continue; }
+
+          if (payload.type === 'meta') {
+            renderMeta(botDiv, payload);
+          } else if (payload.type === 'chunk') {
+            answerText += payload.text;
+            renderAnswerText(botDiv, answerText);
+          } else if (payload.type === 'done') {
+            finalizeMessage(botDiv);
+          }
+        }
+      }
+    } catch (err) {
+      finalizeError(botDiv, 'Could not reach the backend. Is it running?');
+    } finally {
+      sendBtn.disabled = false;
+      input.focus();
+    }
+  });
+
+</script>
+
+</body>
+</html>

@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Architecture — Helpdesk AI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0c0f0d;
+    --panel: #12161d;
+    --line: #232a35;
+    --text: #d9e0e8;
+    --muted: #6b7684;
+    --accent: #4fd1a5;
+    --accent-dim: #2a8f6d;
+    --warn: #e0a458;
+    --danger: #e0685a;
+    --mono: 'SF Mono', 'Roboto Mono', Consolas, monospace;
+    --display: 'Space Grotesk', var(--mono);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background:
+      radial-gradient(ellipse 900px 500px at 15% -10%, rgba(79,209,165,0.06), transparent),
+      radial-gradient(ellipse 700px 400px at 100% 0%, rgba(224,164,88,0.04), transparent),
+      var(--bg);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  header {
+    border-bottom: 1px solid var(--line);
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  header h1 { font-family: var(--display); font-size: 15px; font-weight: 700; letter-spacing: 0.01em; margin: 0; }
+  header nav { margin-left: auto; display: flex; gap: 16px; }
+  header a { color: var(--muted); text-decoration: none; font-size: 12px; }
+  header a:hover { color: var(--accent); }
+
+  main { max-width: 760px; margin: 0 auto; padding: 40px 20px 80px; }
+  h2 { font-size: 15px; color: var(--accent); margin: 40px 0 12px; letter-spacing: 0.02em; }
+  h2:first-of-type { margin-top: 0; }
+  p { color: var(--text); margin: 0 0 14px; }
+  .lede { color: var(--muted); font-size: 13px; margin-bottom: 32px; }
+
+  .pipeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 24px 0 36px;
+  }
+  .stage {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-left: 3px solid var(--accent-dim);
+    border-radius: 4px;
+    padding: 14px 16px;
+    position: relative;
+  }
+  .stage .num { color: var(--accent); font-weight: 700; font-size: 11px; letter-spacing: 0.05em; }
+  .stage .name { font-size: 14px; font-weight: 600; margin: 4px 0 6px; color: var(--text); }
+  .stage .desc { color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+  .arrow {
+    text-align: center;
+    color: var(--accent-dim);
+    font-size: 14px;
+    padding: 6px 0;
+  }
+
+  .note {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    padding: 14px 16px;
+    font-size: 12.5px;
+    color: var(--muted);
+    margin: 16px 0;
+  }
+  .note b { color: var(--warn); }
+
+  table { width: 100%; border-collapse: collapse; margin: 12px 0 24px; font-size: 12.5px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { color: var(--accent-dim); font-weight: 600; }
+  td { color: var(--text); }
+  td.label { color: var(--muted); white-space: nowrap; }
+
+  a.inline { color: var(--accent); }
+
+  .credit {
+    text-align: center;
+    color: var(--muted);
+    font-size: 11px;
+    margin-top: 50px;
+    padding-top: 20px;
+    border-top: 1px solid var(--line);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="dot"></div>
+  <h1>Helpdesk AI · Architecture</h1>
+  <nav>
+    <a href="/">← Back to chat</a>
+    <a href="https://github.com/mandarcasm/ai-it-helpdesk" target="_blank" rel="noopener">GitHub ↗</a>
+  </nav>
+</header>
+
+<main>
+  <p class="lede">
+    A plain-language walkthrough of how a question typed into the chat becomes a
+    grounded, source-cited answer — no ML background required to follow it.
+  </p>
+
+  <h2>The pipeline</h2>
+  <div class="pipeline">
+    <div class="stage">
+      <div class="num">01</div>
+      <div class="name">You ask a question</div>
+      <div class="desc">Plain English, typed or tapped from an example — e.g. "my vpn keeps disconnecting."</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stage">
+      <div class="num">02</div>
+      <div class="name">Embedding</div>
+      <div class="desc">Your question is converted into a list of numbers (a "vector") that captures its meaning — done locally with a small ONNX model, not sent anywhere yet.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stage">
+      <div class="num">03</div>
+      <div class="name">Retrieval</div>
+      <div class="desc">That vector is compared against every pre-embedded knowledge-base article to find the closest matches — this is ChromaDB doing similarity search across 50 SOPs in milliseconds.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stage">
+      <div class="num">04</div>
+      <div class="name">Context building</div>
+      <div class="desc">The top 3 matching article excerpts are pulled together into a single block of text — this becomes the only source of truth the AI is allowed to answer from.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stage">
+      <div class="num">05</div>
+      <div class="name">Generation</div>
+      <div class="desc">The question + that context are sent to an LLM (Llama 3.1 via Groq) with strict instructions: answer only from what was retrieved, translate technical steps into plain language, and say "I don't know" rather than guess.</div>
+    </div>
+    <div class="arrow">↓</div>
+    <div class="stage">
+      <div class="num">06</div>
+      <div class="name">Streaming response</div>
+      <div class="desc">The answer streams back word by word as it's generated, rather than making you wait for the full response — plus the source article(s) it came from, a confidence score, and (when relevant) a real action button, like the self-service password reset.</div>
+    </div>
+  </div>
+
+  <div class="note">
+    <b>Why this matters:</b> this is the same core pattern (retrieval-augmented
+    generation, "RAG") used in production tools like enterprise Copilot search
+    and internal AI help bots. The point of grounding answers in retrieved
+    documents instead of asking the model to answer from memory is that it
+    can't invent a fix that doesn't exist — it can only work from the real,
+    approved SOPs it was given.
+  </div>
+
+  <h2>What's actually running</h2>
+  <table>
+    <tr><th>Layer</th><th>What it does</th></tr>
+    <tr><td class="label">Frontend</td><td>Plain HTML/CSS/JS — no framework overhead for a tool this size</td></tr>
+    <tr><td class="label">Backend</td><td>Python, FastAPI, streaming responses over Server-Sent Events</td></tr>
+    <tr><td class="label">Embeddings</td><td>ChromaDB's built-in ONNX MiniLM model — chosen specifically to fit free-tier hosting memory limits (see the deployment notes for what happens if you don't make this choice)</td></tr>
+    <tr><td class="label">Vector store</td><td>ChromaDB, running embedded — no separate database server needed</td></tr>
+    <tr><td class="label">LLM</td><td>Llama 3.1 8B via Groq's API — fast inference, generous free tier</td></tr>
+    <tr><td class="label">Hosting</td><td>Render, free tier — rate-limited to protect API quota</td></tr>
+  </table>
+
+  <h2>Deliberate design decisions</h2>
+  <p>A few choices here were made on purpose, not by default — worth knowing if asked about them:</p>
+  <div class="note">
+    <b>No PyTorch.</b> The obvious choice for embeddings is a sentence-transformers
+    model, but that pulls in PyTorch — which alone can exceed a free hosting
+    tier's memory limit. Swapping to ChromaDB's lightweight ONNX embedding
+    function does the same job in a fraction of the memory footprint.
+  </div>
+  <div class="note">
+    <b>No chatbot password resets.</b> An unauthenticated chat interface should
+    never be trusted to reset a password or unlock an account — that's an
+    identity-verification problem, not a chat problem. Password-related
+    questions instead hand off directly to Microsoft's own SSPR portal, which
+    does real MFA-based verification.
+  </div>
+  <div class="note">
+    <b>Confidence isn't decorative.</b> The confidence score shown on each
+    answer is computed from the actual vector distance between your question
+    and the best-matching article — not a made-up number. Low confidence
+    means the retrieval genuinely didn't find a strong match, which is a
+    signal to raise a ticket rather than trust the answer.
+  </div>
+
+  <p style="margin-top: 32px;">
+    Full source, including the full troubleshooting log from building and
+    deploying this, is on
+    <a class="inline" href="https://github.com/mandarcasm/ai-it-helpdesk" target="_blank" rel="noopener">GitHub</a>.
+  </p>
+
+  <div class="credit">Built by MandarK (mandarcasm)</div>
+</main>
+
+</body>
+</html>
